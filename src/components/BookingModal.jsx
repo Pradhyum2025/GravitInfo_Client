@@ -120,6 +120,8 @@ const BookingModal = ({ event, onClose }) => {
     }
   }, [dispatch, event?.id, totalSeats])
 
+
+  
   useEffect(() => {
     if (!event?.id) return
 
