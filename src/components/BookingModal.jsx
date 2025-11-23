@@ -121,14 +121,16 @@ const BookingModal = ({ event, onClose }) => {
   }, [dispatch, event?.id, totalSeats])
 
 
-  
+  //Make a live Connections
+ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
+
   useEffect(() => {
     if (!event?.id) return
 
     let newSocket = socket
     if (!socket) {
       try {
-        newSocket = io('http://localhost:5000', {
+        newSocket = io(SOCKET_URL, {
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionAttempts: 5,
