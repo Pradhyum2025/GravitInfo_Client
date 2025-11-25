@@ -361,41 +361,40 @@ const BookingModal = ({ event, onClose }) => {
 
     setLoading(true)
     try {
-      // BACKEND VALIDATES AND CONFIRMS BOOKING - Only backend modifies seat count
       const response = await bookingsAPI.create({
         eventId: event.id,
-        seats: seatNumbers, // Send seat numbers, not indices
+        seats: seatNumbers,
         totalAmount: selectedSeats.length * event.price,
       })
 
-      if (response.success && response.data) {
-        dispatch(addBooking(response.data))
-        setBookingData(response.data)
-        setBookingSuccess(true)
-        toast.success('Booking confirmed successfully!')
-        
-        // Clear selected seats
-        const bookedSeatIndices = [...selectedSeats]
-        setSelectedSeats([])
-        
-        // Unlock all seats after successful booking
-        if (socket && bookedSeatIndices.length > 0) {
-          bookedSeatIndices.forEach(seatIndex => {
-            socket.emit('unlockSeat', { eventId: event.id, seatIndex, userId: user?.id })
-          })
-        }
-        
-        // Refresh booked seats from backend immediately (with error handling)
-        try {
-          const updatedResponse = await bookingsAPI.getAll({ eventId: event.id })
-          const updatedBookings = updatedResponse.success ? (updatedResponse.data || []) : []
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to create booking')
+      }
+
+      dispatch(addBooking(response.data))
+      setBookingData(response.data)
+      setBookingSuccess(true)
+      toast.success('Booking confirmed successfully!')
+
+      const bookedSeatIndices = [...selectedSeats]
+      setSelectedSeats([])
+
+      if (socket && bookedSeatIndices.length > 0) {
+        bookedSeatIndices.forEach(seatIndex => {
+          socket.emit('unlockSeat', { eventId: event.id, seatIndex, userId: user?.id })
+        })
+      }
+
+      try {
+        const updatedResponse = await bookingsAPI.getAll({ eventId: event.id })
+        const updatedBookings = updatedResponse.success ? (updatedResponse.data || []) : []
         const allBookedSeats = []
-        
+
         if (Array.isArray(updatedBookings)) {
           updatedBookings.forEach(booking => {
             const bookingEventId = Number(booking.eventId || booking.event_id)
             const currentEventId = Number(event.id)
-            
+
             if (bookingEventId === currentEventId && booking.seats) {
               let seats = []
               if (Array.isArray(booking.seats)) {
@@ -408,7 +407,7 @@ const BookingModal = ({ event, onClose }) => {
                   seats = booking.seats.split(',').map(s => s.trim()).filter(Boolean)
                 }
               }
-              
+
               seats.forEach(seat => {
                 const seatNum = Number(seat)
                 if (!isNaN(seatNum) && seatNum > 0 && seatNum <= totalSeats) {
@@ -418,15 +417,13 @@ const BookingModal = ({ event, onClose }) => {
             }
           })
         }
-        
+
         const uniqueBookedSeats = [...new Set(allBookedSeats)].sort((a, b) => a - b)
         setBookedSeats(uniqueBookedSeats)
       } catch (refreshError) {
         console.error('Error refreshing booked seats:', refreshError)
-        // Don't fail the booking if refresh fails - booking was successful
       }
-      
-      // Refresh event data (backend modified seat count) - with error handling
+
       try {
         const eventResponse = await eventsAPI.getById(event.id)
         if (eventResponse.success && eventResponse.data) {
@@ -434,14 +431,12 @@ const BookingModal = ({ event, onClose }) => {
         }
       } catch (refreshError) {
         console.error('Error refreshing event data:', refreshError)
-        // Don't fail the booking if refresh fails
       }
     } catch (error) {
       console.error('Booking error:', error)
       const errorMessage = error?.message || error || 'Booking failed. Please try again.'
       toast.error(errorMessage)
       
-      // Unlock seats on booking failure
       if (socket && selectedSeats.length > 0) {
         try {
           selectedSeats.forEach(seatIndex => {
