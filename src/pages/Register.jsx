@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { registerUser } from '@/store/slices/userSlice'
+import { setLoading, setError, setUserData, clearError } from '@/store/slices/userSlice'
+import { authAPI } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -40,12 +41,28 @@ const Register = () => {
   useEffect(() => {
     if (error) {
       toast.error(error)
+      dispatch(clearError())
     }
-  }, [error])
+  }, [error, dispatch])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    dispatch(registerUser({ name, email, password, role }))
+    dispatch(setLoading(true))
+    dispatch(clearError())
+    
+    try {
+      const response = await authAPI.register({ name, email, password, role })
+      if (response.success && response.data) {
+        dispatch(setUserData({
+          user: response.data.user,
+          token: response.data.token
+        }))
+      } else {
+        dispatch(setError(response.message || 'Registration failed'))
+      }
+    } catch (err) {
+      dispatch(setError(err.response?.data?.message || err.message || 'Registration failed'))
+    }
   }
 
   return (

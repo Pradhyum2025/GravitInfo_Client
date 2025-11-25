@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { createEvent, updateEvent, fetchEventById } from '@/store/slices/eventsSlice'
+import { addEvent, updateEventInState, setSelectedEvent, setLoading } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import Sidebar from '@/components/ui/sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,9 +41,20 @@ const CreateEvent = () => {
       navigate('/dashboard', { replace: true })
       return
     }
-    if (eventId) {
-      dispatch(fetchEventById(eventId))
+    const loadEvent = async () => {
+      if (eventId) {
+        dispatch(setLoading(true))
+        try {
+          const response = await eventsAPI.getById(eventId)
+          if (response.success) {
+            dispatch(setSelectedEvent(response.data))
+          }
+        } catch (err) {
+          console.error('Failed to load event:', err)
+        }
+      }
     }
+    loadEvent()
   }, [dispatch, user, navigate, eventId])
 
   useEffect(() => {
@@ -76,13 +88,24 @@ const CreateEvent = () => {
     setLoading(true)
     try {
       if (eventId) {
-        await dispatch(updateEvent({ id: eventId, data: formData })).unwrap()
+        const response = await eventsAPI.update(eventId, formData)
+        if (response.success) {
+          dispatch(updateEventInState(response.data))
+          navigate('/admin/events')
+        } else {
+          alert(response.message || 'Failed to update event')
+        }
       } else {
-        await dispatch(createEvent(formData)).unwrap()
+        const response = await eventsAPI.create(formData)
+        if (response.success) {
+          dispatch(addEvent(response.data))
+          navigate('/admin/events')
+        } else {
+          alert(response.message || 'Failed to create event')
+        }
       }
-      navigate('/admin/events')
     } catch (error) {
-      alert(error || 'Failed to save event')
+      alert(error.response?.data?.message || error.message || 'Failed to save event')
     } finally {
       setLoading(false)
     }

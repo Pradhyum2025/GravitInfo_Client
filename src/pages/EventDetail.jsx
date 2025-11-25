@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchEventById } from '@/store/slices/eventsSlice'
+import { setSelectedEvent } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
@@ -20,12 +21,26 @@ const EventDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const { selectedEvent, loading } = useSelector((state) => state.events)
+  const { selectedEvent } = useSelector((state) => state.events)
   const { user } = useSelector((state) => state.user)
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    dispatch(fetchEventById(id))
+    const loadEvent = async () => {
+      setLoading(true)
+      try {
+        const response = await eventsAPI.getById(id)
+        if (response.success) {
+          dispatch(setSelectedEvent(response.data))
+        }
+      } catch (err) {
+        console.error('Failed to fetch event:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadEvent()
   }, [dispatch, id])
 
   const handleBookTicket = () => {

@@ -4,11 +4,12 @@
 // </copyright>
 // ---------------------------------------------------------------------
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents } from '@/store/slices/eventsSlice'
-import { fetchBookings } from '@/store/slices/bookingsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { setBookings } from '@/store/slices/bookingsSlice'
+import { eventsAPI, bookingsAPI } from '@/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { motion } from 'framer-motion'
 import { Calendar, Ticket, TrendingUp, Users } from 'lucide-react'
@@ -19,15 +20,38 @@ const AdminDashboard = () => {
   const { user } = useSelector((state) => state.user)
   const { events } = useSelector((state) => state.events)
   const { bookings } = useSelector((state) => state.bookings)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (user?.role !== 'admin') {
       navigate('/dashboard', { replace: true })
       return
     }
-    dispatch(fetchEvents())
-    dispatch(fetchBookings()) 
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const [eventsRes, bookingsRes] = await Promise.all([
+          eventsAPI.getAll(),
+          bookingsAPI.getAll()
+        ])
+        if (eventsRes.success) dispatch(setEvents(eventsRes.data || []))
+        if (bookingsRes.success) dispatch(setBookings(bookingsRes.data || []))
+      } catch (err) {
+        console.error('Failed to load data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
   }, [dispatch, user, navigate])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   const upcomingEvents = events.filter((e) => new Date(e.date) > new Date())
   const liveEvents = events.filter((e) => {

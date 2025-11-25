@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { loginUser } from '@/store/slices/userSlice'
+import { setLoading, setError, setUserData, clearError } from '@/store/slices/userSlice'
+import { authAPI } from '@/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,12 +35,28 @@ const Login = () => {
   useEffect(() => {
     if (error) {
       toast.error(error)
+      dispatch(clearError())
     }
-  }, [error])
+  }, [error, dispatch])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    dispatch(loginUser({ email, password }))
+    dispatch(setLoading(true))
+    dispatch(clearError())
+    
+    try {
+      const response = await authAPI.login({ email, password })
+      if (response.success && response.data) {
+        dispatch(setUserData({
+          user: response.data.user,
+          token: response.data.token
+        }))
+      } else {
+        dispatch(setError(response.message || 'Login failed'))
+      }
+    } catch (err) {
+      dispatch(setError(err.response?.data?.message || err.message || 'Login failed'))
+    }
   }
 
   return (

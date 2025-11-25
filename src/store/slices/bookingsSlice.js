@@ -4,44 +4,7 @@
 // </copyright>
 // ---------------------------------------------------------------------
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { bookingAPI } from '@/lib/api'
-
-export const createBooking = createAsyncThunk(
-  'bookings/create',
-  async (data, { rejectWithValue }) => {
-    try {
-      const response = await bookingAPI.create(data)
-      return response.data
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create booking')
-    }
-  }
-)
-
-export const fetchBookings = createAsyncThunk(
-  'bookings/fetchAll',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await bookingAPI.getAll(params)
-      return response.data
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch bookings')
-    }
-  }
-)
-
-export const updateBooking = createAsyncThunk(
-  'bookings/update',
-  async ({ id, data }, { rejectWithValue }) => {
-    try {
-      const response = await bookingAPI.update(id, data)
-      return response.data
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update booking')
-    }
-  }
-)
+import { createSlice } from '@reduxjs/toolkit';
 
 const bookingsSlice = createSlice({
   name: 'bookings',
@@ -51,46 +14,41 @@ const bookingsSlice = createSlice({
     error: null,
   },
   reducers: {
+    setBookings: (state, action) => {
+      state.bookings = action.payload;
+      state.error = null;
+    },
+    addBooking: (state, action) => {
+      state.bookings.push(action.payload);
+      state.error = null;
+    },
+    updateBookingInState: (state, action) => {
+      const index = state.bookings.findIndex(b => b.id === action.payload.id);
+      if (index !== -1) {
+        state.bookings[index] = action.payload;
+      }
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action) => {
+      state.error = action.payload;
+      state.loading = false;
+    },
     clearError: (state) => {
-      state.error = null
+      state.error = null;
     },
   },
-  extraReducers: (builder) => {
-    builder
-      .addCase(createBooking.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(createBooking.fulfilled, (state, action) => {
-        state.loading = false
-        state.bookings.push(action.payload)
-      })
-      .addCase(createBooking.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(fetchBookings.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(fetchBookings.fulfilled, (state, action) => {
-        state.loading = false
-        state.bookings = action.payload
-      })
-      .addCase(fetchBookings.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(updateBooking.fulfilled, (state, action) => {
-        const index = state.bookings.findIndex(b => b.id === action.payload.id)
-        if (index !== -1) {
-          state.bookings[index] = action.payload
-        }
-      })
-  },
-})
+});
 
-export const { clearError } = bookingsSlice.actions
-export default bookingsSlice.reducer
+export const {
+  setBookings,
+  addBooking,
+  updateBookingInState,
+  setLoading,
+  setError,
+  clearError,
+} = bookingsSlice.actions;
+export default bookingsSlice.reducer;
 
 

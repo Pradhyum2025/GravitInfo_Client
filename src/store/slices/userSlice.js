@@ -4,34 +4,7 @@
 // </copyright>
 // ---------------------------------------------------------------------
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import { authAPI } from '@/lib/api'
-
-export const registerUser = createAsyncThunk(
-  'user/register',
-  async (userData, { rejectWithValue }) => {
-    try {
-      const response = await authAPI.register(userData)
-      localStorage.setItem('token', response.data.token)
-      return response.data
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed')
-    }
-  }
-)
-
-export const loginUser = createAsyncThunk(
-  'user/login',
-  async (credentials, { rejectWithValue }) => {
-    try {
-      const response = await authAPI.login(credentials)
-      localStorage.setItem('token', response.data.token)
-      return response.data
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed')
-    }
-  }
-)
+import { createSlice } from '@reduxjs/toolkit';
 
 const userSlice = createSlice({
   name: 'user',
@@ -42,51 +15,44 @@ const userSlice = createSlice({
     error: null,
   },
   reducers: {
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action) => {
+      state.error = action.payload;
+      state.loading = false;
+    },
+    setUserData: (state, action) => {
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.loading = false;
+      state.error = null;
+      if (action.payload.token) {
+        localStorage.setItem('token', action.payload.token);
+      }
+      if (action.payload.user) {
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+      }
+    },
     logout: (state) => {
-      state.user = null
-      state.token = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      state.user = null;
+      state.token = null;
+      state.loading = false;
+      state.error = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     },
     setUser: (state, action) => {
-      state.user = action.payload
-      localStorage.setItem('user', JSON.stringify(action.payload))
+      state.user = action.payload;
+      localStorage.setItem('user', JSON.stringify(action.payload));
+    },
+    clearError: (state) => {
+      state.error = null;
     },
   },
-  extraReducers: (builder) => {
-    builder
-      .addCase(registerUser.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        localStorage.setItem('user', JSON.stringify(action.payload.user))
-      })
-      .addCase(registerUser.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        localStorage.setItem('user', JSON.stringify(action.payload.user))
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false
-        state.error = action.payload
-      })
-  },
-})
+});
 
-export const { logout, setUser } = userSlice.actions
-export default userSlice.reducer
+export const { setLoading, setError, setUserData, logout, setUser, clearError } = userSlice.actions;
+export default userSlice.reducer;
 
 

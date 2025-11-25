@@ -6,9 +6,9 @@
 
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createBooking } from '@/store/slices/bookingsSlice'
-import { fetchEventById } from '@/store/slices/eventsSlice'
-import { fetchBookings } from '@/store/slices/bookingsSlice'
+import { addBooking, setLoading as setBookingsLoading } from '@/store/slices/bookingsSlice'
+import { setSelectedEvent } from '@/store/slices/eventsSlice'
+import { bookingsAPI, eventsAPI } from '@/api'
 import { lockSeat, unlockSeat, setLockedSeats } from '@/store/slices/socketSlice'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
@@ -31,6 +31,7 @@ const BookingModal = ({ event, onClose }) => {
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [bookingData, setBookingData] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [loadingBookedSeats, setLoadingBookedSeats] = useState(true)
   const [bookedSeats, setBookedSeats] = useState([])
 
   const totalSeats = event?.totalSeats || 50
@@ -49,14 +50,18 @@ const BookingModal = ({ event, onClose }) => {
 
   // Fetch all bookings for this event to get booked seats
   useEffect(() => {
-    const fetchBookedSeats = async () => {
+    const fetchBookedSeats = async (isInitial = false) => {
       if (!event?.id) {
         setBookedSeats([])
+        if (isInitial) setLoadingBookedSeats(false)
         return
       }
       
+      if (isInitial) setLoadingBookedSeats(true)
+      
       try {
-        const result = await dispatch(fetchBookings({ eventId: event.id })).unwrap()
+        const response = await bookingsAPI.getAll({ eventId: event.id })
+        const result = response.success ? (response.data || []) : []
         
         // Extract all booked seats from all bookings for this event
         const allBookedSeats = []
@@ -107,16 +112,20 @@ const BookingModal = ({ event, onClose }) => {
       } catch (error) {
         console.error('Failed to fetch booked seats:', error)
         setBookedSeats([])
+      } finally {
+        if (isInitial) setLoadingBookedSeats(false)
       }
     }
     
     if (event?.id && totalSeats > 0) {
-      fetchBookedSeats()
-      // Refresh booked seats every 3 seconds to catch real-time updates
-      const interval = setInterval(fetchBookedSeats, 3000)
+      // Initial fetch with loading state
+      fetchBookedSeats(true)
+      // Refresh booked seats every 3 seconds to catch real-time updates (without loader)
+      const interval = setInterval(() => fetchBookedSeats(false), 3000)
       return () => clearInterval(interval)
     } else {
       setBookedSeats([])
+      setLoadingBookedSeats(false)
     }
   }, [dispatch, event?.id, totalSeats])
 
@@ -303,7 +312,8 @@ const BookingModal = ({ event, onClose }) => {
         }
       })
       // Refresh booked seats
-      const result = await dispatch(fetchBookings({ eventId: event.id })).unwrap()
+      const response = await bookingsAPI.getAll({ eventId: event.id })
+      const result = response.success ? (response.data || []) : []
       const refreshedBookedSeats = []
       
       if (Array.isArray(result)) {
@@ -352,34 +362,33 @@ const BookingModal = ({ event, onClose }) => {
     setLoading(true)
     try {
       // BACKEND VALIDATES AND CONFIRMS BOOKING - Only backend modifies seat count
-      const result = await dispatch(
-        createBooking({
-          eventId: event.id,
-          userId: user.id,
-          seats: seatNumbers, // Send seat numbers, not indices
-          totalAmount: selectedSeats.length * event.price,
-        })
-      ).unwrap()
+      const response = await bookingsAPI.create({
+        eventId: event.id,
+        seats: seatNumbers, // Send seat numbers, not indices
+        totalAmount: selectedSeats.length * event.price,
+      })
 
-      // Booking confirmed by backend
-      setBookingData(result)
-      setBookingSuccess(true)
-      toast.success('Booking confirmed successfully!')
-      
-      // Clear selected seats
-      const bookedSeatIndices = [...selectedSeats]
-      setSelectedSeats([])
-      
-      // Unlock all seats after successful booking
-      if (socket && bookedSeatIndices.length > 0) {
-        bookedSeatIndices.forEach(seatIndex => {
-          socket.emit('unlockSeat', { eventId: event.id, seatIndex, userId: user?.id })
-        })
-      }
-      
-      // Refresh booked seats from backend immediately (with error handling)
-      try {
-        const updatedBookings = await dispatch(fetchBookings({ eventId: event.id })).unwrap()
+      if (response.success && response.data) {
+        dispatch(addBooking(response.data))
+        setBookingData(response.data)
+        setBookingSuccess(true)
+        toast.success('Booking confirmed successfully!')
+        
+        // Clear selected seats
+        const bookedSeatIndices = [...selectedSeats]
+        setSelectedSeats([])
+        
+        // Unlock all seats after successful booking
+        if (socket && bookedSeatIndices.length > 0) {
+          bookedSeatIndices.forEach(seatIndex => {
+            socket.emit('unlockSeat', { eventId: event.id, seatIndex, userId: user?.id })
+          })
+        }
+        
+        // Refresh booked seats from backend immediately (with error handling)
+        try {
+          const updatedResponse = await bookingsAPI.getAll({ eventId: event.id })
+          const updatedBookings = updatedResponse.success ? (updatedResponse.data || []) : []
         const allBookedSeats = []
         
         if (Array.isArray(updatedBookings)) {
@@ -419,7 +428,10 @@ const BookingModal = ({ event, onClose }) => {
       
       // Refresh event data (backend modified seat count) - with error handling
       try {
-        await dispatch(fetchEventById(event.id))
+        const eventResponse = await eventsAPI.getById(event.id)
+        if (eventResponse.success && eventResponse.data) {
+          dispatch(setSelectedEvent(eventResponse.data))
+        }
       } catch (refreshError) {
         console.error('Error refreshing event data:', refreshError)
         // Don't fail the booking if refresh fails
@@ -494,6 +506,11 @@ const BookingModal = ({ event, onClose }) => {
                     <p className="text-sm sm:text-base text-muted-foreground">
                       This event is no longer accepting new bookings.
                     </p>
+                  </div>
+                ) : loadingBookedSeats ? (
+                  <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                    <p className="text-sm sm:text-base text-muted-foreground">Loading available seats...</p>
                   </div>
                 ) : (
                   <>

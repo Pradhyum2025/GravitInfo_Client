@@ -6,7 +6,8 @@
 
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createEvent, updateEvent, fetchEventById } from '@/store/slices/eventsSlice'
+import { addEvent, updateEventInState, setSelectedEvent, setLoading } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +34,20 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
 
     // Load event data when editing
     useEffect(() => {
-        if (eventId && open) {
-            dispatch(fetchEventById(eventId))
+        const loadEvent = async () => {
+            if (eventId && open) {
+                dispatch(setLoading(true))
+                try {
+                    const response = await eventsAPI.getById(eventId)
+                    if (response.success) {
+                        dispatch(setSelectedEvent(response.data))
+                    }
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to load event')
+                }
+            }
         }
+        loadEvent()
     }, [dispatch, eventId, open])
 
     // Populate form when event data is loaded
@@ -94,17 +106,31 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
         setLoading(true)
         try {
             if (eventId) {
-                await dispatch(updateEvent({ id: eventId, data: formData })).unwrap()
-                toast.success('Event updated successfully!')
+                const response = await eventsAPI.update(eventId, formData)
+                if (response.success) {
+                    dispatch(updateEventInState(response.data))
+                    toast.success('Event updated successfully!')
+                } else {
+                    toast.error(response.message || 'Failed to update event')
+                }
             } else {
-                await dispatch(createEvent(formData)).unwrap()
-                toast.success('Event created successfully!')
+                const response = await eventsAPI.create(formData)
+                if (response.success) {
+                    dispatch(addEvent(response.data))
+                    toast.success('Event created successfully!')
+                } else {
+                    toast.error(response.message || 'Failed to create event')
+                }
             }
             onOpenChange(false)
             if (onSuccess) {
                 onSuccess()
             }
         } catch (error) {
+            toast.error(error.response?.data?.message || error.message || 'Failed to save event')
+        } finally {
+            setLoading(false)
+        }
             toast.error(error || 'Failed to save event')
         } finally {
             setLoading(false)

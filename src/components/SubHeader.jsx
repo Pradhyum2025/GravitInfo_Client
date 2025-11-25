@@ -11,7 +11,8 @@ import { Plus, Calendar } from 'lucide-react'
 import { useState } from 'react'
 import EventFormModal from '@/components/EventFormModal'
 import { useDispatch } from 'react-redux'
-import { fetchEvents } from '@/store/slices/eventsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 
 const SubHeader = () => {
   const location = useLocation()
@@ -24,8 +25,15 @@ const SubHeader = () => {
     setModalOpen(true)
   }
 
-  const handleModalSuccess = () => {
-    dispatch(fetchEvents())
+  const handleModalSuccess = async () => {
+    try {
+      const response = await eventsAPI.getAll()
+      if (response.success) {
+        dispatch(setEvents(response.data || []))
+      }
+    } catch (err) {
+      console.error('Failed to refresh events:', err)
+    }
   }
 
   // Determine the page title and content based on the route

@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents } from '@/store/slices/eventsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,7 @@ import { toast } from 'sonner'
 const Home = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { events, loading } = useSelector((state) => state.events)
+  const { events } = useSelector((state) => state.events)
   const { user } = useSelector((state) => state.user)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -29,6 +30,7 @@ const Home = () => {
   const [filterLocation, setFilterLocation] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterDate, setFilterDate] = useState('')
+  const [loading, setLoading] = useState(true)
   const { scrollYProgress } = useScroll()
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '20%'])
   const opacity = useTransform(scrollYProgress, [0, 0.3], [1, 0])
@@ -39,7 +41,20 @@ const Home = () => {
   const eventsInView = useInView(eventsRef, { once: true, margin: "-100px" })
 
   useEffect(() => {
-    dispatch(fetchEvents())
+    const loadEvents = async () => {
+      setLoading(true)
+      try {
+        const response = await eventsAPI.getAll()
+        if (response.success) {
+          dispatch(setEvents(response.data || []))
+        }
+      } catch (err) {
+        console.error('Failed to fetch events:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadEvents()
   }, [dispatch])
 
   const allEvents = events.filter(e => {

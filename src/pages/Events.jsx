@@ -4,10 +4,11 @@
 // </copyright>
 // ---------------------------------------------------------------------
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents } from '@/store/slices/eventsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import Sidebar from '@/components/ui/sidebar'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,10 +19,24 @@ import { Calendar, MapPin, Ticket } from 'lucide-react'
 const Events = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { events, loading } = useSelector((state) => state.events)
+  const { events } = useSelector((state) => state.events)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    dispatch(fetchEvents())
+    const loadEvents = async () => {
+      setLoading(true)
+      try {
+        const response = await eventsAPI.getAll()
+        if (response.success) {
+          dispatch(setEvents(response.data || []))
+        }
+      } catch (err) {
+        console.error('Failed to fetch events:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadEvents()
   }, [dispatch])
 
   return (

@@ -7,8 +7,9 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchBookings, updateBooking } from '@/store/slices/bookingsSlice'
-import { fetchEvents } from '@/store/slices/eventsSlice'
+import { setBookings, updateBookingInState } from '@/store/slices/bookingsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { bookingsAPI, eventsAPI } from '@/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -25,28 +26,57 @@ const AdminBookings = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.user)
-  const { bookings, loading } = useSelector((state) => state.bookings)
+  const { bookings } = useSelector((state) => state.bookings)
   const { events } = useSelector((state) => state.events)
+  const [loading, setLoading] = useState(true)
+  const [updatingStatus, setUpdatingStatus] = useState({})
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [bookingsRes, eventsRes] = await Promise.all([
+        bookingsAPI.getAll(),
+        eventsAPI.getAll()
+      ])
+      if (bookingsRes.success) dispatch(setBookings(bookingsRes.data || []))
+      if (eventsRes.success) dispatch(setEvents(eventsRes.data || []))
+    } catch (err) {
+      console.error('Failed to load data:', err)
+      toast.error('Failed to load bookings')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    dispatch(fetchBookings())
-    dispatch(fetchEvents())
+    loadData()
   }, [dispatch])
 
   const handleStatusUpdate = async (bookingId, newStatus) => {
+    setUpdatingStatus(prev => ({ ...prev, [bookingId]: true }))
     try {
-      await dispatch(updateBooking({ id: bookingId, data: { status: newStatus } })).unwrap()
-      dispatch(fetchBookings())
-      toast.success('Booking status updated successfully!')
+      const response = await bookingsAPI.update(bookingId, { status: newStatus })
+      if (response.success) {
+        dispatch(updateBookingInState(response.data))
+        toast.success('Booking status updated successfully!')
+        // Refresh all bookings to get latest data
+        await loadData()
+      } else {
+        toast.error(response.message || 'Failed to update booking status')
+      }
     } catch (error) {
-      toast.error(error || 'Failed to update booking status')
+      toast.error(error.response?.data?.message || error.message || 'Failed to update booking status')
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, [bookingId]: false }))
     }
   }
 
   return (
     <div className="w-full space-y-4">
       {loading ? (
-        <p className="text-gray-500">Loading bookings...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
       ) : bookings.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -121,6 +151,7 @@ const AdminBookings = () => {
                         <Select
                           value={booking.status || 'pending'}
                           onValueChange={(value) => handleStatusUpdate(booking.id, value)}
+                          disabled={updatingStatus[booking.id]}
                         >
                           <SelectTrigger className="w-full md:w-40">
                             <SelectValue />
@@ -131,6 +162,9 @@ const AdminBookings = () => {
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                           </SelectContent>
                         </Select>
+                        {updatingStatus[booking.id] && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                        )}
                       </div>
                     </div>
                   </CardContent>

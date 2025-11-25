@@ -7,7 +7,8 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents, deleteEvent } from '@/store/slices/eventsSlice'
+import { setEvents, removeEvent } from '@/store/slices/eventsSlice'
+import { eventsAPI } from '@/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
@@ -19,26 +20,49 @@ const ManageEvents = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.user)
-  const { events, loading } = useSelector((state) => state.events)
+  const { events } = useSelector((state) => state.events)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedEventId, setSelectedEventId] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const loadEvents = async () => {
+    setLoading(true)
+    try {
+      const response = await eventsAPI.getAll()
+      if (response.success) {
+        dispatch(setEvents(response.data || []))
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to fetch events')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (user?.role !== 'admin') {
       navigate('/dashboard', { replace: true })
       return
     }
-    dispatch(fetchEvents())
+    loadEvents()
   }, [dispatch, user, navigate])
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this event?')) {
+      setDeletingId(id)
       try {
-        await dispatch(deleteEvent(id)).unwrap()
-        dispatch(fetchEvents())
-        toast.success('Event deleted successfully!')
+        const response = await eventsAPI.delete(id)
+        if (response.success) {
+          dispatch(removeEvent(id))
+          toast.success('Event deleted successfully!')
+        } else {
+          toast.error(response.message || 'Failed to delete event')
+        }
       } catch (error) {
-        toast.error(error || 'Failed to delete event')
+        toast.error(error.response?.data?.message || error.message || 'Failed to delete event')
+      } finally {
+        setDeletingId(null)
       }
     }
   }
@@ -54,7 +78,7 @@ const ManageEvents = () => {
   }
 
   const handleModalSuccess = () => {
-    dispatch(fetchEvents())
+    loadEvents()
   }
 
   const getStatusBadge = (status) => {
@@ -70,7 +94,9 @@ const ManageEvents = () => {
     <>
       <div className="w-full space-y-8">
         {loading ? (
-          <p className="text-gray-500">Loading events...</p>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
         ) : events.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -134,8 +160,13 @@ const ManageEvents = () => {
                         variant="outline"
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleDelete(event.id)}
+                        disabled={deletingId === event.id}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        {deletingId === event.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </CardContent>

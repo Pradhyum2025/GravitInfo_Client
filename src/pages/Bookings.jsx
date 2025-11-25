@@ -4,23 +4,41 @@
 // </copyright>
 // ---------------------------------------------------------------------
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Card, CardContent } from '@/components/ui/card'
 import { motion } from 'framer-motion'
-import { fetchBookings } from '@/store/slices/bookingsSlice'
-import { fetchEvents } from '@/store/slices/eventsSlice'
+import { setBookings } from '@/store/slices/bookingsSlice'
+import { setEvents } from '@/store/slices/eventsSlice'
+import { bookingsAPI, eventsAPI } from '@/api'
 import BookingCard from './BookingCard'
 
 const Bookings = () => {
   const dispatch = useDispatch()
   const { user } = useSelector((state) => state.user)
-  const { bookings, loading } = useSelector((state) => state.bookings)
+  const { bookings } = useSelector((state) => state.bookings)
   const { events } = useSelector((state) => state.events)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    dispatch(fetchBookings({ userId: user?.id }))
-    dispatch(fetchEvents())
+    const loadData = async () => {
+      if (user?.id) {
+        setLoading(true)
+        try {
+          const [bookingsRes, eventsRes] = await Promise.all([
+            bookingsAPI.getUserBookings(user.id),
+            eventsAPI.getAll()
+          ])
+          if (bookingsRes.success) dispatch(setBookings(bookingsRes.data || []))
+          if (eventsRes.success) dispatch(setEvents(eventsRes.data || []))
+        } catch (err) {
+          console.error('Failed to load data:', err)
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+    loadData()
   }, [dispatch, user?.id])
 
   return (
