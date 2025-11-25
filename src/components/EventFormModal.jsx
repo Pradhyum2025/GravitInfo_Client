@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { addEvent, updateEventInState, setSelectedEvent, setLoading } from '@/store/slices/eventsSlice'
+import { addEvent, updateEventInState, setSelectedEvent } from '@/store/slices/eventsSlice'
 import { eventsAPI } from '@/api'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -32,15 +32,29 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
         image: '',
     })
 
+    const populateForm = (eventData) => {
+        if (!eventData) return
+        setFormData({
+            title: eventData.title || '',
+            description: eventData.description || '',
+            date: eventData.date ? new Date(eventData.date).toISOString().slice(0, 16) : '',
+            location: eventData.location || '',
+            price: eventData.price || '',
+            totalSeats: eventData.totalSeats || '',
+            status: eventData.status || 'upcoming',
+            image: eventData.image || '',
+        })
+    }
+
     // Load event data when editing
     useEffect(() => {
         const loadEvent = async () => {
             if (eventId && open) {
-                dispatch(setLoading(true))
                 try {
                     const response = await eventsAPI.getById(eventId)
                     if (response.success) {
                         dispatch(setSelectedEvent(response.data))
+                        populateForm(response.data)
                     }
                 } catch (err) {
                     toast.error(err.response?.data?.message || 'Failed to load event')
@@ -53,16 +67,7 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
     // Populate form when event data is loaded
     useEffect(() => {
         if (selectedEvent && eventId) {
-            setFormData({
-                title: selectedEvent.title || '',
-                description: selectedEvent.description || '',
-                date: selectedEvent.date ? new Date(selectedEvent.date).toISOString().slice(0, 16) : '',
-                location: selectedEvent.location || '',
-                price: selectedEvent.price || '',
-                totalSeats: selectedEvent.totalSeats || '',
-                status: selectedEvent.status || 'upcoming',
-                image: selectedEvent.image || '',
-            })
+            populateForm(selectedEvent)
         }
     }, [selectedEvent, eventId])
 
