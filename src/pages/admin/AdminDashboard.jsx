@@ -20,6 +20,8 @@ const AdminDashboard = () => {
   const { user } = useSelector((state) => state.user)
   const { events } = useSelector((state) => state.events)
   const { bookings } = useSelector((state) => state.bookings)
+  const safeEvents = Array.isArray(events) ? events : []
+  const safeBookings = Array.isArray(bookings) ? bookings : []
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,14 +55,14 @@ const AdminDashboard = () => {
     )
   }
 
-  const upcomingEvents = events.filter((e) => new Date(e.date) > new Date())
-  const liveEvents = events.filter((e) => {
+  const upcomingEvents = safeEvents.filter((e) => new Date(e.date) > new Date())
+  const liveEvents = safeEvents.filter((e) => {
     const eventDate = new Date(e.date)
     const today = new Date()
     return eventDate.toDateString() === today.toDateString()
   })
 
-  const totalRevenue = bookings.reduce(
+  const totalRevenue = safeBookings.reduce(
     (sum, b) => sum + parseFloat(b.totalAmount || 0),
     0
   );
@@ -80,7 +82,7 @@ const AdminDashboard = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground mb-0.5">Total Events</p>
-                <p className="text-lg font-bold">{events.length}</p>
+                <p className="text-lg font-bold">{safeEvents.length}</p>
               </div>
             </CardContent>
           </Card>
@@ -98,7 +100,7 @@ const AdminDashboard = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground mb-0.5">Total Bookings</p>
-                <p className="text-lg font-bold">{bookings.length}</p>
+                <p className="text-lg font-bold">{safeBookings.length}</p>
               </div>
             </CardContent>
           </Card>
@@ -148,7 +150,7 @@ const AdminDashboard = () => {
             <CardTitle>Recent Events</CardTitle>
           </CardHeader>
           <CardContent>
-            {events.slice(0, 5).map((event) => (
+            {safeEvents.slice(0, 5).map((event) => (
               <div
                 key={event.id}
                 className="flex items-center justify-between p-3 border-b border-gray-200 last:border-0"
@@ -170,7 +172,7 @@ const AdminDashboard = () => {
             <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
           <CardContent>
-            {bookings.slice(0, 5).map((booking) => (
+            {safeBookings.slice(0, 5).map((booking) => (
               <div
                 key={booking.id}
                 className="flex items-center justify-between p-3 border-b border-gray-200 last:border-0"

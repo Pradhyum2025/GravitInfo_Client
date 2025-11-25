@@ -23,6 +23,7 @@ const Home = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { events } = useSelector((state) => state.events)
+  const safeEvents = Array.isArray(events) ? events : []
   const { user } = useSelector((state) => state.user)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -57,7 +58,7 @@ const Home = () => {
     loadEvents()
   }, [dispatch])
 
-  const allEvents = events.filter(e => {
+  const allEvents = safeEvents.filter(e => {
     const matchesSearch = !searchTerm || 
       e.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       e.description?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -70,7 +71,7 @@ const Home = () => {
     return matchesSearch && matchesLocation && matchesStatus && matchesDate
   })
   
-  const uniqueLocations = [...new Set(events.map(e => e.location).filter(Boolean))]
+  const uniqueLocations = [...new Set(safeEvents.map(e => e.location).filter(Boolean))]
 
   const handleBookTicket = (event) => {
     // Check if user is logged in
@@ -170,7 +171,7 @@ const Home = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                <span className="font-medium">{events.length}+ events</span>
+                <span className="font-medium">{safeEvents.length}+ events</span>
               </div>
               <div className="flex items-center gap-2">
                 <Star className="w-5 h-5 fill-current" />

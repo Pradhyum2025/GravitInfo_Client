@@ -28,6 +28,8 @@ const AdminBookings = () => {
   const { user } = useSelector((state) => state.user)
   const { bookings } = useSelector((state) => state.bookings)
   const { events } = useSelector((state) => state.events)
+  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const safeEvents = Array.isArray(events) ? events : []
   const [loading, setLoading] = useState(true)
   const [updatingStatus, setUpdatingStatus] = useState({})
 
@@ -77,7 +79,7 @@ const AdminBookings = () => {
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      ) : bookings.length === 0 ? (
+      ) : safeBookings.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-gray-500">No bookings found</p>
@@ -85,8 +87,8 @@ const AdminBookings = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {bookings.map((booking, index) => {
-            const event = events.find((e) => e.id === booking.eventId)
+          {safeBookings.map((booking, index) => {
+            const event = safeEvents.find((e) => e.id === booking.eventId)
             const seats = booking.seats || []
             const hasSeats = Array.isArray(seats) && seats.length > 0
             

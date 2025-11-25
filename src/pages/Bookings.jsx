@@ -18,6 +18,8 @@ const Bookings = () => {
   const { user } = useSelector((state) => state.user)
   const { bookings } = useSelector((state) => state.bookings)
   const { events } = useSelector((state) => state.events)
+  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const safeEvents = Array.isArray(events) ? events : []
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -47,7 +49,7 @@ const Bookings = () => {
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      ) : bookings.length === 0 ? (
+      ) : safeBookings.length === 0 ? (
         <Card className="shadow-lg">
           <CardContent className="py-16 text-center">
             <p className="text-muted-foreground text-lg">No bookings found</p>
@@ -55,8 +57,8 @@ const Bookings = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-4">
-          {bookings.map((booking, index) => {
-            const event = events.find((e) => e.id === booking.eventId)
+          {safeBookings.map((booking, index) => {
+            const event = safeEvents.find((e) => e.id === booking.eventId)
             return (
               <BookingCard key={booking.id} event={event} booking={booking} index={index} />
             )

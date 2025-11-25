@@ -21,6 +21,7 @@ const ManageEvents = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.user)
   const { events } = useSelector((state) => state.events)
+  const safeEvents = Array.isArray(events) ? events : []
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedEventId, setSelectedEventId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -97,7 +98,7 @@ const ManageEvents = () => {
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        ) : events.length === 0 ? (
+        ) : safeEvents.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-gray-500 mb-4">No events found</p>
@@ -108,7 +109,7 @@ const ManageEvents = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event, index) => (
+            {safeEvents.map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}

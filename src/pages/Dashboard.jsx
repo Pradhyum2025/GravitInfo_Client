@@ -21,6 +21,8 @@ const Dashboard = () => {
   const { user } = useSelector((state) => state.user)
   const { bookings } = useSelector((state) => state.bookings)
   const { events } = useSelector((state) => state.events)
+  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const safeEvents = Array.isArray(events) ? events : []
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -44,12 +46,12 @@ const Dashboard = () => {
     loadData()
   }, [dispatch, user?.id])
 
-  const upcomingBookings = bookings.filter((booking) => {
-    const event = events.find((e) => e.id === booking.eventId)
+  const upcomingBookings = safeBookings.filter((booking) => {
+    const event = safeEvents.find((e) => e.id === booking.eventId)
     return event && new Date(event.date) > new Date()
   })
 
-  const totalSpent = bookings.reduce((sum, booking) => sum + parseFloat(booking.totalAmount || 0), 0)
+  const totalSpent = safeBookings.reduce((sum, booking) => sum + parseFloat(booking.totalAmount || 0), 0)
 
   const stats = [
     {
@@ -131,7 +133,7 @@ const Dashboard = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              {bookings.length === 0 ? (
+              {safeBookings.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="p-4 rounded-full bg-muted mb-4">
                     <Ticket className="w-8 h-8 text-muted-foreground" />
@@ -142,8 +144,8 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {bookings.slice(0, 5).map((booking) => {
-                    const event = events.find((e) => e.id === booking.eventId)
+                  {safeBookings.slice(0, 5).map((booking) => {
+                    const event = safeEvents.find((e) => e.id === booking.eventId)
                     return (
                       <div
                         key={booking.id}

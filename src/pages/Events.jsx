@@ -20,6 +20,7 @@ const Events = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { events } = useSelector((state) => state.events)
+  const safeEvents = Array.isArray(events) ? events : []
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -62,7 +63,7 @@ const Events = () => {
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : events.length === 0 ? (
+          ) : safeEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <div className="p-4 rounded-full bg-muted mb-4">
                 <Calendar className="w-8 h-8 text-muted-foreground" />
@@ -72,7 +73,7 @@ const Events = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event, index) => (
+              {safeEvents.map((event, index) => (
                 <motion.div
                   key={event.id}
                   initial={{ opacity: 0, y: 20 }}
