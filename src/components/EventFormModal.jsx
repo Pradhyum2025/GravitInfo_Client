@@ -131,10 +131,6 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
         } finally {
             setLoading(false)
         }
-            toast.error(error || 'Failed to save event')
-        } finally {
-            setLoading(false)
-        }
     }
 
     return (
