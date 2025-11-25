@@ -19,7 +19,7 @@ import { ImageIcon, X } from 'lucide-react'
 
 const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
     const dispatch = useDispatch()
-    const { selectedEvent } = useSelector((state) => state.events)
+    const { events, selectedEvent } = useSelector((state) => state.events)
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
         title: '',
@@ -46,12 +46,16 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
         })
     }
 
-    // Load event data when editing
+    const numericEventId = eventId ? Number(eventId) : null
+    const eventFromStore = Array.isArray(events)
+        ? events.find((event) => Number(event.id) === numericEventId)
+        : null
+
     useEffect(() => {
         const loadEvent = async () => {
-            if (eventId && open) {
+            if (numericEventId && open) {
                 try {
-                    const response = await eventsAPI.getById(eventId)
+                    const response = await eventsAPI.getById(numericEventId)
                     if (response.success) {
                         dispatch(setSelectedEvent(response.data))
                         populateForm(response.data)
@@ -62,14 +66,20 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
             }
         }
         loadEvent()
-    }, [dispatch, eventId, open])
+    }, [dispatch, numericEventId, open])
+
+    useEffect(() => {
+        if (eventFromStore && open) {
+            populateForm(eventFromStore)
+        }
+    }, [eventFromStore, open])
 
     // Populate form when event data is loaded
     useEffect(() => {
-        if (selectedEvent && eventId) {
+        if (selectedEvent && numericEventId && Number(selectedEvent.id) === numericEventId) {
             populateForm(selectedEvent)
         }
-    }, [selectedEvent, eventId])
+    }, [selectedEvent, numericEventId])
 
     // Reset form when modal closes
     useEffect(() => {
