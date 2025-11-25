@@ -74,14 +74,12 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
         }
     }, [eventFromStore, open])
 
-    // Populate form when event data is loaded
     useEffect(() => {
         if (selectedEvent && numericEventId && Number(selectedEvent.id) === numericEventId) {
             populateForm(selectedEvent)
         }
     }, [selectedEvent, numericEventId])
 
-    // Reset form when modal closes
     useEffect(() => {
         if (!open) {
             setFormData({
@@ -119,19 +117,28 @@ const EventFormModal = ({ open, onOpenChange, eventId, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
+        const payload = {
+            ...formData,
+            price: Number(formData.price),
+            totalSeats: Number(formData.totalSeats),
+        }
         try {
             if (eventId) {
-                const response = await eventsAPI.update(eventId, formData)
+                const response = await eventsAPI.update(eventId, payload)
                 if (response.success) {
                     dispatch(updateEventInState(response.data))
+                    dispatch(setSelectedEvent(response.data))
+                    populateForm(response.data)
                     toast.success('Event updated successfully!')
                 } else {
                     toast.error(response.message || 'Failed to update event')
                 }
             } else {
-                const response = await eventsAPI.create(formData)
+                const response = await eventsAPI.create(payload)
                 if (response.success) {
                     dispatch(addEvent(response.data))
+                    dispatch(setSelectedEvent(response.data))
+                    populateForm(response.data)
                     toast.success('Event created successfully!')
                 } else {
                     toast.error(response.message || 'Failed to create event')

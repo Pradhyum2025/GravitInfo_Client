@@ -61,8 +61,6 @@ const AdminBookings = () => {
       if (response.success) {
         dispatch(updateBookingInState(response.data))
         toast.success('Booking status updated successfully!')
-        // Refresh all bookings to get latest data
-        await loadData()
       } else {
         toast.error(response.message || 'Failed to update booking status')
       }
